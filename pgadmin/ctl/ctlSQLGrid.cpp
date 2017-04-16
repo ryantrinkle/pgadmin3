@@ -15,6 +15,8 @@
 #include <wx/wx.h>
 #include <wx/clipbrd.h>
 
+#include <algorithm>
+
 #include "db/pgConn.h"
 #include "ctl/ctlSQLGrid.h"
 #include "utils/sysSettings.h"
@@ -48,8 +50,10 @@ ctlSQLGrid::ctlSQLGrid(wxWindow *parent, wxWindowID id, const wxPoint &pos, cons
 	SetLabelFont(fntLabel);
 	SetColLabelAlignment(wxALIGN_LEFT, wxALIGN_CENTER);
 	SetRowLabelSize(50);
-	SetDefaultRowSize(fntCells.GetPointSize() * 2);
-	SetColLabelSize(fntLabel.GetPointSize() * 4);
+	int cellHeight = fntCells.GetPixelSize().GetHeight() * 1.2;
+	int rowLabelHeight = fntLabel.GetPixelSize().GetHeight() * 1.2;
+	SetDefaultRowSize(std::max(cellHeight, rowLabelHeight));
+	SetColLabelSize(fntLabel.GetPixelSize().GetHeight() * 2.2);
 	SetDefaultCellOverflow(false);
 
 	Connect(wxID_ANY, wxEVT_GRID_LABEL_LEFT_DCLICK, wxGridEventHandler(ctlSQLGrid::OnLabelDoubleClick));
@@ -85,8 +89,12 @@ void ctlSQLGrid::OnMouseWheel(wxMouseEvent &event)
 		}
 		SetLabelFont(fontlabel);
 		SetDefaultCellFont(fontcells);
-		SetColLabelSize(fontlabel.GetPointSize() * 4);
-		SetDefaultRowSize(fontcells.GetPointSize() * 2);
+		wxFont fntCells(settings->GetSQLFont());
+		wxFont fntLabel(settings->GetSystemFont());
+		int cellHeight = fntCells.GetPixelSize().GetHeight() * 1.2;
+		int rowLabelHeight = fntLabel.GetPixelSize().GetHeight() * 1.2;
+		SetDefaultRowSize(std::max(cellHeight, rowLabelHeight));
+		SetColLabelSize(fntLabel.GetPixelSize().GetHeight() * 2.2);
 		for (int index = 0; index < GetNumberCols(); index++)
 			SetColSize(index, -1);
 		ForceRefresh();
