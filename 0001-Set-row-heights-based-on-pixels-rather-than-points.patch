@@ -1,0 +1,68 @@
+From aea3d062fe5ba992ddbf2ebd09654d3f105b01c7 Mon Sep 17 00:00:00 2001
+From: Ryan Trinkle <ryan.trinkle@gmail.com>
+Date: Sun, 16 Apr 2017 16:20:16 -0400
+Subject: [PATCH] Set row heights based on pixels rather than points
+
+Previously, on a high-DPI display, rows in the ctlSQLGrid
+would be too small by default.  Although the user can
+manually adjust row heights, this is tedious and makes it
+almost impossible to skim through data.  By calculating
+the default row height based on pixels rather than points,
+this is taken into account.
+
+There are still some magic numbers here.  Using
+GetPixelSize() alone seems to place the baseline of the
+text at the bottom of the cell, cutting off any descenders
+in the text.  To adjust for this, we add 20% of one line
+height (experimentally determined).  Unfortunately, we
+can't use wxDC::GetTextExtent, which would give us precise
+results, because we don't have a wxDC at the time we're
+setting these default heights.
+---
+ pgadmin/ctl/ctlSQLGrid.cpp | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/pgadmin/ctl/ctlSQLGrid.cpp b/pgadmin/ctl/ctlSQLGrid.cpp
+index ac13bfed1..68e298dcd 100644
+--- a/pgadmin/ctl/ctlSQLGrid.cpp
++++ b/pgadmin/ctl/ctlSQLGrid.cpp
+@@ -15,6 +15,8 @@
+ #include <wx/wx.h>
+ #include <wx/clipbrd.h>
+ 
++#include <algorithm>
++
+ #include "db/pgConn.h"
+ #include "ctl/ctlSQLGrid.h"
+ #include "utils/sysSettings.h"
+@@ -48,8 +50,10 @@ ctlSQLGrid::ctlSQLGrid(wxWindow *parent, wxWindowID id, const wxPoint &pos, cons
+ 	SetLabelFont(fntLabel);
+ 	SetColLabelAlignment(wxALIGN_LEFT, wxALIGN_CENTER);
+ 	SetRowLabelSize(50);
+-	SetDefaultRowSize(fntCells.GetPointSize() * 2);
+-	SetColLabelSize(fntLabel.GetPointSize() * 4);
++	int cellHeight = fntCells.GetPixelSize().GetHeight() * 1.2;
++	int rowLabelHeight = fntLabel.GetPixelSize().GetHeight() * 1.2;
++	SetDefaultRowSize(std::max(cellHeight, rowLabelHeight));
++	SetColLabelSize(fntLabel.GetPixelSize().GetHeight() * 2.2);
+ 	SetDefaultCellOverflow(false);
+ 
+ 	Connect(wxID_ANY, wxEVT_GRID_LABEL_LEFT_DCLICK, wxGridEventHandler(ctlSQLGrid::OnLabelDoubleClick));
+@@ -85,8 +89,12 @@ void ctlSQLGrid::OnMouseWheel(wxMouseEvent &event)
+ 		}
+ 		SetLabelFont(fontlabel);
+ 		SetDefaultCellFont(fontcells);
+-		SetColLabelSize(fontlabel.GetPointSize() * 4);
+-		SetDefaultRowSize(fontcells.GetPointSize() * 2);
++		wxFont fntCells(settings->GetSQLFont());
++		wxFont fntLabel(settings->GetSystemFont());
++		int cellHeight = fntCells.GetPixelSize().GetHeight() * 1.2;
++		int rowLabelHeight = fntLabel.GetPixelSize().GetHeight() * 1.2;
++		SetDefaultRowSize(std::max(cellHeight, rowLabelHeight));
++		SetColLabelSize(fntLabel.GetPixelSize().GetHeight() * 2.2);
+ 		for (int index = 0; index < GetNumberCols(); index++)
+ 			SetColSize(index, -1);
+ 		ForceRefresh();
+-- 
+2.12.2
+
